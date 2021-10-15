@@ -4,6 +4,7 @@ import (
 	"time"
 )
 
+// https://medium.com/@anandpillai/synchronization-in-go-using-concurrency-primitives-a-case-study-535bb2a71c13
 // The problem is — How do you synchronize the
 // go-routines so that they print the numbers nicely in order as 1,2,3,4,5 … ?
 func main() {
