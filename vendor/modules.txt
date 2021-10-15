@@ -1,0 +1,3 @@
+# github.com/lissdx/yapgo v0.0.0-20211002064132-37b26c392fd8
+## explicit; go 1.17
+github.com/lissdx/yapgo/pkg/pipeline
