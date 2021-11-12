@@ -3,67 +3,37 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/lissdx/yapgo/pkg/pipeline"
-	_ "github.com/lissdx/yapgo/pkg/pipeline"
 	"math/rand"
-	"strconv"
-	"sync"
-	_ "sync"
 	"time"
 )
 
-func worker(ctx context.Context, workerName string, wg *sync.WaitGroup, done <-chan interface{}, out chan<- interface{}) {
-	//func worker(ctx context.Context, workerName string, out chan <- interface{})  {
+// DON'T pass channel to write to it as param
+func worker(ctx context.Context, workerNum int, out chan<- int) {
 	waitTime := time.Duration(rand.Intn(100)+10) * time.Millisecond
-	fmt.Printf("worker %s sleep %d\n", workerName, waitTime)
-	timer := time.NewTimer(waitTime)
-	defer wg.Done()
-	defer func() {
-		timer.Stop()
-		select {
-		case <-timer.C:
-			fmt.Printf("drain timer of worker: %s\n", workerName)
-		default:
-		}
-	}()
-
+	fmt.Println(workerNum, "sleep", waitTime)
 	select {
 	case <-ctx.Done():
 		return
-	case <-done:
-
-	case <-timer.C:
-		select {
-		case <-done:
-			return
-		case out <- fmt.Sprintf("worker %s finished\n", workerName):
-		}
+	case <-time.After(waitTime):
+		fmt.Println("worker", workerNum, "done")
+		out <- workerNum
 	}
 }
 
-// Example has a huge issues with writing to closed channel
-// Don't pass channel to "write to" to function
+// IS NOT PRODUCTION READY
+// DON'T pass channel to write to it as param
+// Main idea find first result
 func main() {
-	var wg sync.WaitGroup
-	ctx, cancelFn := context.WithCancel(context.Background())
-	outStream := make(chan interface{})
-	done := make(chan interface{})
-	defer close(done)
+	ctx, finish := context.WithCancel(context.Background())
+	result := make(chan int, 1)
 
-	for i := 0; i < 100000; i++ {
-		wg.Add(1)
-		go worker(ctx, strconv.Itoa(i), &wg, done, outStream)
-		//go worker(ctx, strconv.Itoa(i), outStream)
+	for i := 0; i <= 10; i++ {
+		go worker(ctx, i, result)
 	}
 
-	res := <-outStream
-	cancelFn()
-	wg.Wait()
-	close(outStream)
-	for v := range pipeline.OrDone(done, outStream) {
-		fmt.Printf("DRAIN %s", v)
-	}
+	foundBy := <-result
+	fmt.Println("result found by", foundBy)
+	finish()
 
-	fmt.Printf("*** got first msg: %s", res)
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second)
 }
